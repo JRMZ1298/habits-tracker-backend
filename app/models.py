@@ -9,6 +9,7 @@ class User(Base):
     id         = Column(Integer, primary_key=True)
     email      = Column(String, unique=True, nullable=False)
     name       = Column(String)
+    hashed_password = Column(String, nullable=False)
     habits     = relationship("Habit", back_populates="user")
 
 class Habit(Base):
