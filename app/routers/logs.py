@@ -58,3 +58,25 @@ def habit_stats(
 ):
     _get_habit_or_403(habit_id, current_user, db)
     return get_stats(habit_id, db)
+
+from datetime import date
+
+@router.get("/today")
+def get_today_log(
+    habit_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Devuelve el log de hoy si existe, null si no."""
+    _get_habit_or_403(habit_id, current_user, db)
+
+    log = db.query(HabitLog).filter(
+        HabitLog.habit_id == habit_id,
+        HabitLog.date == date.today()
+    ).first()
+
+    if not log:
+        raise HTTPException(status_code=404, detail="Sin log hoy")
+        # El frontend interpreta 404 como "no completado"
+
+    return log

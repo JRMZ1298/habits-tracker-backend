@@ -1,5 +1,5 @@
 
-from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, DateTime, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
@@ -14,19 +14,21 @@ class User(Base):
 
 class Habit(Base):
     __tablename__ = "habits"
-    id           = Column(Integer, primary_key=True)
-    user_id      = Column(Integer, ForeignKey("users.id"))
-    name         = Column(String, nullable=False)
-    description  = Column(String)
-    frequency    = Column(String, default="daily")  # daily | weekly
-    created_at   = Column(DateTime, default=datetime.utcnow())
-    user         = relationship("User", back_populates="habits")
-    logs         = relationship("HabitLog", back_populates="habit")
+    id          = Column(Integer, primary_key=True)
+    user_id     = Column(Integer, ForeignKey("users.id"))
+    name        = Column(String, nullable=False)
+    frequency   = Column(String, nullable=False)
+    goal        = Column(String, nullable=False)             
+    reminders   = Column(JSON,   nullable=True, default=[]) 
+    icon        = Column(String, nullable=False)              
+    created_at  = Column(DateTime, default=datetime.utcnow)
+    user        = relationship("User", back_populates="habits")
+    logs        = relationship("HabitLog", back_populates="habit")
 
 class HabitLog(Base):
     __tablename__ = "habit_logs"
     id          = Column(Integer, primary_key=True)
     habit_id    = Column(Integer, ForeignKey("habits.id"))
     completed   = Column(Boolean, default=True)
-    date        = Column(Date, nullable=False)   # solo la fecha, sin hora
+    date        = Column(Date, nullable=False)   
     habit       = relationship("Habit", back_populates="logs")

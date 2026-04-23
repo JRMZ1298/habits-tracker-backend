@@ -19,7 +19,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],  # URL de tu React en desarrollo
     allow_credentials=True,
-    allow_methods=["*"],    # GET, POST, DELETE, PUT, etc.
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],    # GET, POST, DELETE, PUT, etc.
     allow_headers=["*"],    # Authorization, Content-Type, etc.
 )
 # ─────────────────────────────────────────────────────────────────────────────
