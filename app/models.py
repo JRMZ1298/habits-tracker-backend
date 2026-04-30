@@ -32,3 +32,23 @@ class HabitLog(Base):
     completed   = Column(Boolean, default=True)
     date        = Column(Date, nullable=False)   
     habit       = relationship("Habit", back_populates="logs")
+
+class Badge(Base):
+    __tablename__ = "badges"
+    id          = Column(Integer, primary_key=True)
+    key         = Column(String, unique=True, nullable=False)  # "water_5_days"
+    name        = Column(String, nullable=False)               # "Fluid Flow"
+    icon        = Column(String, nullable=False)               # "water_drop"
+    description = Column(String)                               # "5 días tomando agua"
+    required_streak = Column(Integer, nullable=False)          # 5
+    category    = Column(String, nullable=False)               # "water_drop" — coincide con el icon del hábito
+    user_badges = relationship("UserBadge", back_populates="badge")
+
+class UserBadge(Base):
+    __tablename__ = "user_badges"
+    id         = Column(Integer, primary_key=True)
+    user_id    = Column(Integer, ForeignKey("users.id"))
+    badge_id   = Column(Integer, ForeignKey("badges.id"))
+    unlocked_at = Column(DateTime, default=datetime.utcnow)
+    user       = relationship("User")
+    badge      = relationship("Badge", back_populates="user_badges")

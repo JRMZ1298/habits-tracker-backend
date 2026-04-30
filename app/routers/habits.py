@@ -33,6 +33,14 @@ class HabitResponse(BaseModel):
     class Config:
         from_attributes = True   # Permite convertir el modelo SQLAlchemy a dict
 
+class PaginatedHabitsResponse(BaseModel):
+    habits:      List[HabitResponse]
+    total:       int
+    page:        int
+    limit:       int
+    total_pages: int
+    has_next:    bool
+    has_prev:    bool
 
 @router.post("/", response_model=HabitResponse)
 def create_habit(
@@ -52,15 +60,6 @@ def create_habit(
     db.commit()
     db.refresh(habit)
     return habit
-
-class PaginatedHabitsResponse(BaseModel):
-    habits:      List[HabitResponse]
-    total:       int
-    page:        int
-    limit:       int
-    total_pages: int
-    has_next:    bool
-    has_prev:    bool
 
 @router.get("/", response_model=PaginatedHabitsResponse)
 def get_my_habits(
@@ -106,3 +105,40 @@ def delete_habit(
     db.delete(habit)
     db.commit()
     return {"mensaje": "Hábito eliminado"}
+
+@router.get("/{habit_id}", response_model=HabitResponse)
+def get_habit(
+    habit_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    habit = db.query(Habit).filter(Habit.id == habit_id).first()
+    if not habit:
+        raise HTTPException(status_code=404, detail="Hábito no encontrado")
+    if habit.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+    return habit
+
+
+@router.put("/{habit_id}", response_model=HabitResponse)
+def update_habit(
+    habit_id: int,
+    habit_data: HabitCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    habit = db.query(Habit).filter(Habit.id == habit_id).first()
+    if not habit:
+        raise HTTPException(status_code=404, detail="Hábito no encontrado")
+    if habit.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+
+    habit.name        = habit_data.name
+    habit.frequency   = habit_data.frequency
+    habit.goal        = habit_data.goal
+    habit.reminders   = habit_data.reminders or []
+    habit.icon        = habit_data.icon
+
+    db.commit()
+    db.refresh(habit)
+    return habit

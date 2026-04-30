@@ -1,11 +1,12 @@
 # app/routers/logs.py — versión protegida
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import date
+from datetime import date, timedelta
 from app.database import get_db
 from app.models import HabitLog, Habit, User
 from app.services.streak import get_stats
 from app.services.auth import get_current_user
+from app.services.badges import check_and_award_badges
 
 router = APIRouter(prefix="/habits/{habit_id}/logs", tags=["logs"])
 
@@ -47,7 +48,17 @@ def log_habit(
         from app.services.email import send_milestone
         send_milestone(current_user.email, current_user.name, habit.name, streak)
 
-    return {"mensaje": "Registrado", **stats}
+    # Verificar y otorgar insignias nuevas
+    new_badges = check_and_award_badges(current_user.id, habit, db)
+
+    return {
+        "mensaje":    "Registrado",
+        **stats,
+        "new_badges": [          # Lista de insignias recién desbloqueadas
+            {"name": b.name, "icon": b.icon, "description": b.description}
+            for b in new_badges
+        ]
+    }
 
 
 @router.get("/stats")
