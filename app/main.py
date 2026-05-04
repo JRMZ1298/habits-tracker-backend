@@ -5,10 +5,9 @@ from app.routers import auth, habits, logs, badges, stats, recomendations
 from app.scheduler import start_scheduler
 from fastapi.middleware.cors import CORSMiddleware
 from app.seeds import seed_badges
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
+from app.core.limiter import limiter
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,7 +21,6 @@ app = FastAPI(title="Habit Tracker", lifespan=lifespan)
 # =========================
 # 🚦 RATE LIMIT
 # =========================
-limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 
 

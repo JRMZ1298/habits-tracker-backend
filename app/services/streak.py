@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import date, timedelta
-from app.models import HabitLog
+from app.models import HabitLog, Habit
 
 def get_streak(habit_id: int, db: Session) -> int:
     """
@@ -59,3 +59,52 @@ def get_stats(habit_id: int, db: Session) -> dict:
         "best_streak": best,
         "total": len(dates),
     }
+
+def get_best_current_streak(user_id: int, db: Session) -> dict:
+    """Racha activa más alta entre todos los hábitos del usuario."""
+    habits = db.query(Habit).filter(Habit.user_id == user_id).all()
+
+    best_streak  = 0
+    best_habit   = None
+
+    for habit in habits:
+        streak = get_streak(habit.id, db)
+        if streak > best_streak:
+            best_streak = streak
+            best_habit  = habit.name
+
+    return {"streak": best_streak, "habit": best_habit}
+
+
+def get_best_historical_streak(user_id: int, db: Session) -> dict:
+    """Mejor racha que el usuario ha tenido en toda la historia."""
+    habits = db.query(Habit).filter(Habit.user_id == user_id).all()
+
+    best_streak = 0
+    best_habit  = None
+
+    for habit in habits:
+        logs = (
+            db.query(HabitLog.date)
+            .filter(HabitLog.habit_id == habit.id, HabitLog.completed == True)
+            .order_by(HabitLog.date.asc())
+            .all()
+        )
+        dates = sorted({log.date for log in logs})
+        if not dates:
+            continue
+
+        # Calcular mejor racha histórica del hábito
+        current_run = best_run = 1
+        for i in range(1, len(dates)):
+            if (dates[i] - dates[i - 1]).days == 1:
+                current_run += 1
+                best_run = max(best_run, current_run)
+            else:
+                current_run = 1
+
+        if best_run > best_streak:
+            best_streak = best_run
+            best_habit  = habit.name
+
+    return {"streak": best_streak, "habit": best_habit}
