@@ -61,6 +61,32 @@ def get_today_count(
     )
     return {"completed": count}
 
+def calculate_level(total_completed: int) -> dict:
+    """
+    Calcula el nivel actual basado en hábitos completados acumulados.
+    Nivel N requiere N*5 hábitos para subir al siguiente.
+    """
+    level = 1
+    accumulated = 0
+
+    while True:
+        threshold = level * 5           # nivel 1→2: 5, nivel 2→3: 10...
+        if accumulated + threshold > total_completed:
+            break
+        accumulated += threshold
+        level += 1
+
+    progress_in_level  = total_completed - accumulated
+    habits_for_next    = level * 5      # cuántos necesita para este nivel
+    habits_to_next     = habits_for_next - progress_in_level
+
+    return {
+        "level":             level,
+        "progress_in_level": progress_in_level,
+        "habits_per_level":  habits_for_next,
+        "habits_to_next":    habits_to_next,
+    }
+
 @router.get("/profile")
 def get_user_profile_stats(
     db: Session = Depends(get_db),
@@ -85,20 +111,14 @@ def get_user_profile_stats(
         .count()
     )
 
-    HABITS_PER_LEVEL  = 10
-    level             = (total_completed // HABITS_PER_LEVEL) + 1
-    progress_in_level = total_completed % HABITS_PER_LEVEL   
-    habits_to_next    = HABITS_PER_LEVEL - progress_in_level  
+    level_data      = calculate_level(total_completed)
 
     best_current    = get_best_current_streak(current_user.id, db)
     best_historical = get_best_historical_streak(current_user.id, db)
 
     return {
-        "level":              level,
+        **level_data,
         "total_completed":    total_completed,
-        "progress_in_level":  progress_in_level, 
-        "habits_to_next":     habits_to_next,      
-        "habits_per_level":   HABITS_PER_LEVEL,
         "best_current_streak": {
             "streak": best_current["streak"],
             "habit":  best_current["habit"],   

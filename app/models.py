@@ -10,6 +10,8 @@ class User(Base):
     email      = Column(String, unique=True, nullable=False)
     name       = Column(String)
     hashed_password = Column(String, nullable=False)
+    daily_reminder        = Column(Boolean, default=True)
+    weekly_summary        = Column(Boolean, default=True)
     habits     = relationship("Habit", back_populates="user")
 
 class Habit(Base):
