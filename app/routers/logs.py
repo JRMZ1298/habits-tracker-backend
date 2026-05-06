@@ -31,30 +31,40 @@ def log_habit(
 ):
     habit = _get_habit_or_403(habit_id, current_user, db)
 
-    existing = db.query(HabitLog).filter(
-        HabitLog.habit_id == habit_id,
-        HabitLog.date == date.today()
-    ).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Ya registrado hoy")
+    if habit.frequency == "weekly":
+        today             = date.today()
+        days_since_sunday = (today.weekday() + 1) % 7
+        week_start        = today - timedelta(days=days_since_sunday)
+
+        existing = db.query(HabitLog).filter(
+            HabitLog.habit_id  == habit_id,
+            HabitLog.completed == True,
+            HabitLog.date      >= week_start,
+            HabitLog.date      <= today,
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail="Hábito semanal ya completado esta semana"
+            )
+    else:
+        existing = db.query(HabitLog).filter(
+            HabitLog.habit_id == habit_id,
+            HabitLog.date     == date.today()
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Ya registrado hoy")
 
     db.add(HabitLog(habit_id=habit_id, date=date.today(), completed=True))
     db.commit()
 
-    stats  = get_stats(habit_id, db)
-    streak = stats["current_streak"]
-
-    if streak in MILESTONES:
-        from app.services.email import send_milestone
-        send_milestone(current_user.email, current_user.name, habit.name, streak)
-
-    # Verificar y otorgar insignias nuevas
+    stats      = get_stats(habit_id, db)
     new_badges = check_and_award_badges(current_user.id, habit, db)
 
     return {
         "mensaje":    "Registrado",
         **stats,
-        "new_badges": [          # Lista de insignias recién desbloqueadas
+        "new_badges": [
             {"name": b.name, "icon": b.icon, "description": b.description}
             for b in new_badges
         ]
@@ -70,7 +80,6 @@ def habit_stats(
     _get_habit_or_403(habit_id, current_user, db)
     return get_stats(habit_id, db)
 
-from datetime import date
 
 @router.get("/today")
 def get_today_log(
@@ -78,16 +87,25 @@ def get_today_log(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Devuelve el log de hoy si existe, null si no."""
-    _get_habit_or_403(habit_id, current_user, db)
+    habit = _get_habit_or_403(habit_id, current_user, db)
 
-    log = db.query(HabitLog).filter(
-        HabitLog.habit_id == habit_id,
-        HabitLog.date == date.today()
-    ).first()
+    if habit.frequency == "weekly":
+        # Para hábitos semanales: revisar desde el domingo de esta semana
+        today             = date.today()
+        days_since_sunday = (today.weekday() + 1) % 7
+        week_start        = today - timedelta(days=days_since_sunday)
 
-    if not log:
-        raise HTTPException(status_code=404, detail="Sin log hoy")
-        # El frontend interpreta 404 como "no completado"
+        log = db.query(HabitLog).filter(
+            HabitLog.habit_id  == habit_id,
+            HabitLog.completed == True,
+            HabitLog.date      >= week_start,   # ← desde el domingo
+            HabitLog.date      <= today,
+        ).first()
+    else:
+        # Hábitos diarios: solo hoy
+        log = db.query(HabitLog).filter(
+            HabitLog.habit_id == habit_id,
+            HabitLog.date     == date.today()
+        ).first()
 
-    return log
+    return log  # None → 200 con null, objeto → completado
