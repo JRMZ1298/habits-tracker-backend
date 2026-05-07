@@ -4,8 +4,6 @@ import httpx
 import os
 import json
 from openai import OpenAI
-from fastapi.responses import JSONResponse
-from slowapi.errors import RateLimitExceeded
 import time
 from openai import OpenAI
 from dotenv import load_dotenv

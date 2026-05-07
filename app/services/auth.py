@@ -30,6 +30,8 @@ def hash_password(plain: str) -> str:
     return hashed.decode()   # Guardar como string en la DB
 
 def verify_password(plain: str, hashed: str) -> bool:
+    if not hashed:
+        return False
     return bcrypt.checkpw(_prehash(plain), hashed.encode())
 
 

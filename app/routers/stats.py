@@ -48,18 +48,39 @@ def get_today_count(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Total de hábitos completados hoy por el usuario."""
-    count = (
+    """Total de habitos completados en la semana de tipo Weekly"""
+    today             = date.today()
+    days_since_sunday = (today.weekday() + 1) % 7
+    week_start        = today - timedelta(days=days_since_sunday)
+
+    weeklyCount = (
         db.query(HabitLog)
         .join(Habit)
         .filter(
             Habit.user_id      == current_user.id,
-            HabitLog.date      == date.today(),
+            Habit.frequency    == "weekly",
+            HabitLog.date      >= week_start,
+            HabitLog.date      <= today,
             HabitLog.completed == True
         )
         .count()
     )
-    return {"completed": count}
+
+    """Total de hábitos completados hoy por el usuario de tipo Daily."""
+    dailyCount = (
+        db.query(HabitLog)
+        .join(Habit)
+        .filter(
+            Habit.user_id      == current_user.id,
+            Habit.frequency    == "daily",
+            HabitLog.date      == today,
+            HabitLog.completed == True
+        )
+        .count()
+    )
+
+    totalCount = dailyCount + weeklyCount
+    return {"completed": totalCount}
 
 def calculate_level(total_completed: int) -> dict:
     """
