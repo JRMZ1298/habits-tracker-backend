@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import HabitLog, Habit
@@ -10,6 +10,8 @@ from app.services.streak import (
     get_best_historical_streak
 )
 from sqlalchemy import extract
+from datetime import date, timedelta
+from calendar import monthrange
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -180,3 +182,61 @@ def get_yearly_summary(
         })
 
     return result
+
+@router.get("/habit/{habit_id}/period-progress")
+def get_habit_period_progress(
+    habit_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Daily  → completados en la semana actual (lunes a domingo)
+    Weekly → completados en el mes actual
+    """
+    habit = db.query(Habit).filter(Habit.id == habit_id).first()
+    if not habit:
+        raise HTTPException(status_code=404, detail="Hábito no encontrado")
+    if habit.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+
+    today = date.today()
+
+    if habit.frequency == "daily":
+        # Semana actual: domingo a sábado
+        days_since_sunday = (today.weekday() + 1) % 7   # 0=domingo, 6=sábado
+        start      = today - timedelta(days=days_since_sunday)
+        end        = start + timedelta(days=6)
+        total_bars = 7
+
+    else:  # weekly
+        # Mes actual: día 1 al último día del mes
+        start      = today.replace(day=1)
+        last_day   = monthrange(today.year, today.month)[1]
+        end        = today.replace(day=last_day)
+        total_bars = 4   # ~4 semanas por mes
+
+    completed = (
+        db.query(HabitLog)
+        .filter(
+            HabitLog.habit_id  == habit_id,
+            HabitLog.completed == True,
+            HabitLog.date      >= start,
+            HabitLog.date      <= end,
+        )
+        .count()
+    )
+
+    completed_bars = min(completed, total_bars)
+    percentage     = round((completed_bars / total_bars) * 100) if total_bars > 0 else 0
+
+    return {
+        "habit_id":       habit_id,
+        "frequency":      habit.frequency,
+        "period_start":   start.isoformat(),
+        "period_end":     end.isoformat(),
+        "completed":      completed,
+        "total_bars":     total_bars,
+        "completed_bars": completed_bars,
+        "percentage":     percentage,
+        "progress":       f"{completed_bars} / {total_bars}",
+    }

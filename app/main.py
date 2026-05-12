@@ -1,7 +1,7 @@
 import contextlib
 from fastapi import FastAPI, Request
 from app.database import engine, Base
-from app.routers import auth, habits, logs, badges, stats, recomendations, notifications
+from app.routers import auth, habits, logs, badges, stats, recomendations, notifications, users
 from app.scheduler import start_scheduler
 from fastapi.middleware.cors import CORSMiddleware
 from app.seeds import seed_badges
@@ -50,3 +50,4 @@ app.include_router(stats.router)
 app.include_router(badges.router)
 app.include_router(recomendations.router)
 app.include_router(notifications.router)
+app.include_router(users.router)
