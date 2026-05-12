@@ -1,14 +1,9 @@
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
-import os
-
-# Lee la URL de la base de datos del archivo .env
-# Si no existe, usa SQLite (un archivo local, ideal para empezar)
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./habits.db")
+from app.core.config import settings
 
 # 'engine' es la conexión real a la base de datos
-engine = create_engine(DATABASE_URL)
+engine = create_engine(settings.DATABASE_URL)
 # 'SessionLocal' es la fábrica de sesiones (conexiones temporales)
 SessionLocal = sessionmaker(bind=engine)
 

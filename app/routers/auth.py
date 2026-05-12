@@ -4,34 +4,31 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User
 from app.services.auth import hash_password, verify_password, create_access_token
+from app.core.config import settings
+from app.schemas.auth import RegisterRequest, RegisterResponse, LoginResponse
 import httpx
-import os
 from urllib.parse import urlencode
-from dotenv import load_dotenv
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-load_dotenv()
 
 
-@router.post("/register")
-def register(email: str, name: str, password: str,
-             db: Session = Depends(get_db)):
-    """Registrar un nuevo usuario con contraseña hasheada."""
-    if db.query(User).filter(User.email == email).first():
+@router.post("/register", response_model=RegisterResponse)
+def register(body: RegisterRequest, db: Session = Depends(get_db)):
+    if db.query(User).filter(User.email == body.email).first():
         raise HTTPException(status_code=400, detail="Email ya registrado")
 
     user = User(
-        email=email,
-        name=name,
-        hashed_password=hash_password(password)   # Nunca guardamos la original
+        email=body.email,
+        name=body.name,
+        hashed_password=hash_password(body.password)
     )
     db.add(user)
     db.commit()
     db.refresh(user)
-    return {"id": user.id, "email": user.email, "name": user.name}
+    return RegisterResponse(id=user.id, email=user.email, name=user.name)
 
 
-@router.post("/login")
+@router.post("/login", response_model=LoginResponse)
 def login(form: OAuth2PasswordRequestForm = Depends(),
           db: Session = Depends(get_db)):
     """
@@ -55,17 +52,17 @@ def login(form: OAuth2PasswordRequestForm = Depends(),
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     token = create_access_token(data={"sub": user.email})
-    return {
-        "access_token": token,
-        "token_type": "bearer",        # Estándar OAuth2
-        "user_name": user.name,
-        "user_email": user.email
-    }
+    return LoginResponse(
+        access_token=token,
+        token_type="bearer",
+        user_name=user.name,
+        user_email=user.email
+    )
 
-GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-GOOGLE_REDIRECT_URI  = os.getenv("GOOGLE_REDIRECT_URI")
-FRONTEND_URL         = os.getenv("FRONTEND_URL", "http://localhost:5173")
+GOOGLE_CLIENT_ID     = settings.GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET = settings.GOOGLE_CLIENT_SECRET
+GOOGLE_REDIRECT_URI  = settings.GOOGLE_REDIRECT_URI
+FRONTEND_URL         = settings.FRONTEND_URL
 
 GOOGLE_AUTH_URL  = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"

@@ -6,14 +6,9 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User
-import os
+from app.core.config import settings
 import hashlib
 import bcrypt
-
-# Configuración
-SECRET_KEY = os.getenv("SECRET_KEY", "cambia_esto_en_produccion")
-ALGORITHM  = os.getenv("ALGORITHM", "HS256")
-EXPIRE_MIN = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 1440))
 
 # Le dice a FastAPI dónde esperar el token (Header Authorization)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -43,9 +38,9 @@ def create_access_token(data: dict) -> str:
     'data' es lo que codificamos dentro (normalmente el email del usuario).
     """
     payload = data.copy()
-    expire  = datetime.utcnow() + timedelta(minutes=EXPIRE_MIN)
+    expire  = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     payload.update({"exp": expire})          # Fecha de expiración
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 def decode_token(token: str) -> str:
     """
@@ -53,7 +48,7 @@ def decode_token(token: str) -> str:
     Lanza excepción si el token es inválido o expiró.
     """
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email: str = payload.get("sub")      # "sub" = subject = email
         if email is None:
             raise ValueError("Token sin email")

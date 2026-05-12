@@ -1,23 +1,17 @@
 from fastapi import APIRouter, Request
 import random
 import httpx
-import os
 import json
 from openai import OpenAI
 import time
-from openai import OpenAI
-from dotenv import load_dotenv
 from app.core.limiter import limiter
+from app.core.config import settings
 
 router = APIRouter(prefix="/recommendation", tags=["recommendation"])
-load_dotenv()
 
 
-# =========================
-# 🔐 CONFIG
-# =========================
-PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+PEXELS_API_KEY = settings.PEXELS_API_KEY
+OPENROUTER_API_KEY = settings.OPENROUTER_API_KEY
 
 
 if OPENROUTER_API_KEY:

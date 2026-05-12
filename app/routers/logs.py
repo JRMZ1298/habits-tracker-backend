@@ -7,10 +7,9 @@ from app.models import HabitLog, Habit, User
 from app.services.streak import get_stats
 from app.services.auth import get_current_user
 from app.services.badges import check_and_award_badges
+from app.schemas.log import LogResponse, StatsResponse, TodayLogResponse, NewBadgeInfo
 
 router = APIRouter(prefix="/habits/{habit_id}/logs", tags=["logs"])
-
-MILESTONES = {7, 14, 30, 60, 100}
 
 
 def _get_habit_or_403(habit_id: int, current_user: User, db: Session) -> Habit:
@@ -23,7 +22,7 @@ def _get_habit_or_403(habit_id: int, current_user: User, db: Session) -> Habit:
     return habit
 
 
-@router.post("/")
+@router.post("/", response_model=LogResponse)
 def log_habit(
     habit_id: int,
     db: Session = Depends(get_db),
@@ -61,17 +60,19 @@ def log_habit(
     stats      = get_stats(habit_id, db)
     new_badges = check_and_award_badges(current_user.id, habit, db)
 
-    return {
-        "mensaje":    "Registrado",
-        **stats,
-        "new_badges": [
-            {"name": b.name, "icon": b.icon, "description": b.description}
+    return LogResponse(
+        mensaje="Registrado",
+        current_streak=stats["current_streak"],
+        best_streak=stats["best_streak"],
+        total=stats["total"],
+        new_badges=[
+            NewBadgeInfo(name=b.name, icon=b.icon, description=b.description)
             for b in new_badges
         ]
-    }
+    )
 
 
-@router.get("/stats")
+@router.get("/stats", response_model=StatsResponse)
 def habit_stats(
     habit_id: int,
     db: Session = Depends(get_db),
@@ -81,7 +82,7 @@ def habit_stats(
     return get_stats(habit_id, db)
 
 
-@router.get("/today")
+@router.get("/today", response_model=TodayLogResponse | None)
 def get_today_log(
     habit_id: int,
     db: Session = Depends(get_db),

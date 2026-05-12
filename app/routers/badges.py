@@ -1,29 +1,12 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Badge, UserBadge, Habit
+from app.models import Badge, UserBadge, Habit, User
 from app.services.auth import get_current_user
 from app.services.streak import get_streak
-from app.models import User
-from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime
+from app.schemas.badge import BadgeResponse
 
 router = APIRouter(prefix="/badges", tags=["badges"])
-
-class BadgeResponse(BaseModel):
-    id:          int
-    key:         str
-    name:        str
-    icon:        str
-    description: Optional[str]
-    category:    str
-    required_streak: int
-    unlocked:    bool
-    unlocked_at: Optional[datetime]
-
-    class Config:
-        from_attributes = True
 
 
 @router.get("/", response_model=list[BadgeResponse])

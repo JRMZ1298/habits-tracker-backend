@@ -3,3 +3,17 @@ uvicorn
 sqlalchemy
 apscheduler
 python-dotenv
+pydantic-settings
+alembic
+pytest
+httpx
+apscheduler
+python-dotenv
+pydantic-settings
+python-jose
+bcrypt
+slowapi
+httpx
+openai
+pydantic[email]
+email-validator

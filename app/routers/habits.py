@@ -1,46 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel                    # ← nuevo
-from typing import Optional, List                 # ← nuevo
 from app.database import get_db
 from app.models import Habit, User
 from app.services.auth import get_current_user
-from datetime import datetime
+from app.schemas.habit import HabitCreate, HabitResponse, PaginatedHabitsResponse
 
 router = APIRouter(prefix="/habits", tags=["habits"])
-
-
-# Schema de entrada — Pydantic valida los datos automáticamente
-class HabitCreate(BaseModel):
-    name:        str
-    frequency:   str
-    goal:        str
-    reminders:   Optional[List[str]] = []
-    icon:        str
-
-
-# Schema de salida — lo que devuelve el endpoint
-class HabitResponse(BaseModel):
-    id:          int
-    user_id:     int
-    name:        str
-    frequency:   str
-    goal:        str
-    reminders:   List[str]
-    icon:        str
-    created_at:  datetime
-
-    class Config:
-        from_attributes = True   # Permite convertir el modelo SQLAlchemy a dict
-
-class PaginatedHabitsResponse(BaseModel):
-    habits:      List[HabitResponse]
-    total:       int
-    page:        int
-    limit:       int
-    total_pages: int
-    has_next:    bool
-    has_prev:    bool
 
 @router.post("/", response_model=HabitResponse)
 def create_habit(

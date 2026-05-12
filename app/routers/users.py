@@ -2,18 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User
-from pydantic import BaseModel, EmailStr
-from typing import Optional
-from app.services.auth import get_current_user
-from app.services.auth import create_access_token
+from app.services.auth import get_current_user, create_access_token
+from app.schemas.user import UpdateProfileRequest, ProfileUpdateResponse, TokenRefreshResponse
 
 router = APIRouter(prefix='/users', tags=['users'])
 
-class UpdateProfileRequest(BaseModel):
-    name:  Optional[str]       = None
-    email: Optional[EmailStr]  = None
-
-@router.put("/me")
+@router.put("/me", response_model=ProfileUpdateResponse)
 def update_profile(
     data: UpdateProfileRequest,
     db: Session = Depends(get_db),
@@ -41,10 +35,10 @@ def update_profile(
         "email": current_user.email,
     }
 
-@router.post("/refresh")
+@router.post("/refresh", response_model=TokenRefreshResponse)
 def refresh_token(
     current_user: User = Depends(get_current_user)
 ):
     """Genera un nuevo token con los datos actuales del usuario."""
     token = create_access_token(data={"sub": current_user.email})
-    return {"access_token": token, "token_type": "bearer"}
+    return TokenRefreshResponse(access_token=token, token_type="bearer")

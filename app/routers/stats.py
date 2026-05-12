@@ -10,12 +10,12 @@ from app.services.streak import (
     get_best_historical_streak
 )
 from sqlalchemy import extract
-from datetime import date, timedelta
 from calendar import monthrange
+from app.schemas.stats import WeeklyDay, TodayCount, ProfileResponse, StreakInfo, YearlyMonth, PeriodProgress
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
-@router.get("/weekly")
+@router.get("/weekly", response_model=list[WeeklyDay])
 def get_weekly_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -45,7 +45,7 @@ def get_weekly_summary(
 
     return result
 
-@router.get("/today-count")
+@router.get("/today-count", response_model=TodayCount)
 def get_today_count(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -110,7 +110,7 @@ def calculate_level(total_completed: int) -> dict:
         "habits_to_next":    habits_to_next,
     }
 
-@router.get("/profile")
+@router.get("/profile", response_model=ProfileResponse)
 def get_user_profile_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -142,17 +142,11 @@ def get_user_profile_stats(
     return {
         **level_data,
         "total_completed":    total_completed,
-        "best_current_streak": {
-            "streak": best_current["streak"],
-            "habit":  best_current["habit"],   
-        },
-        "best_historical_streak": {
-            "streak": best_historical["streak"],
-            "habit":  best_historical["habit"],
-        },
+            "best_current_streak": StreakInfo(**best_current),
+            "best_historical_streak": StreakInfo(**best_historical),
     }
 
-@router.get("/yearly")
+@router.get("/yearly", response_model=list[YearlyMonth])
 def get_yearly_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -183,7 +177,7 @@ def get_yearly_summary(
 
     return result
 
-@router.get("/habit/{habit_id}/period-progress")
+@router.get("/habit/{habit_id}/period-progress", response_model=PeriodProgress)
 def get_habit_period_progress(
     habit_id: int,
     db: Session = Depends(get_db),

@@ -1,26 +1,26 @@
 import contextlib
 from fastapi import FastAPI, Request
-from app.database import engine, Base
-from app.routers import auth, habits, logs, badges, stats, recomendations, notifications, users
+from app.routers import auth, habits, logs, badges, stats, recommendations, notifications, users
 from app.scheduler import start_scheduler
 from fastapi.middleware.cors import CORSMiddleware
 from app.seeds import seed_badges
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from app.core.limiter import limiter
+from alembic.config import Config
+from alembic import command
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
-    seed_badges()           # ← Inserta badges si no existen
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
+    seed_badges()
     scheduler = start_scheduler()
     yield
     scheduler.shutdown()
 
 app = FastAPI(title="Habit Tracker", lifespan=lifespan)
 
-# =========================
-# 🚦 RATE LIMIT
-# =========================
 app.state.limiter = limiter
 
 
@@ -31,23 +31,19 @@ def rate_limit_handler(request: Request, exc: RateLimitExceeded):
         content={"detail": "Too many requests"},
     )
 
-# ── CORS — agregar esto antes de los routers ──────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # URL de tu React en desarrollo
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],    # GET, POST, DELETE, PUT, etc.
-    allow_headers=["*"],    # Authorization, Content-Type, etc.
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
 )
-# ─────────────────────────────────────────────────────────────────────────────
-
-Base.metadata.create_all(bind=engine)
 
 app.include_router(auth.router)
 app.include_router(habits.router)
 app.include_router(logs.router)
 app.include_router(stats.router)
 app.include_router(badges.router)
-app.include_router(recomendations.router)
+app.include_router(recommendations.router)
 app.include_router(notifications.router)
 app.include_router(users.router)

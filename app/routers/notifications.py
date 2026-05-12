@@ -2,16 +2,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User
-from pydantic import BaseModel
 from app.services.auth import get_current_user
+from app.schemas.notification import NotificationPreferences, NotificationResponse
 
 router = APIRouter(prefix='/notifications', tags=['notifications'])
 
-class NotificationPreferences(BaseModel):
-    daily_reminder: bool
-    weekly_summary: bool
-
-@router.put("/me/notifications")
+@router.put("/me/notifications", response_model=NotificationResponse)
 def update_notifications(
     prefs: NotificationPreferences,
     db: Session = Depends(get_db),
@@ -26,7 +22,7 @@ def update_notifications(
         "weekly_summary": current_user.weekly_summary,
     }
 
-@router.get("/me/notifications")
+@router.get("/me/notifications", response_model=NotificationResponse)
 def get_notifications(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
