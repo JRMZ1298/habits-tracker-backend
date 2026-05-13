@@ -30,16 +30,24 @@ def create_habit(
 def get_my_habits(
     page:  int = 1,      # Página actual (empieza en 1)
     limit: int = 5,      # Hábitos por página
+    search: str = '',    #Parametro de busqueda
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     skip = (page - 1) * limit   # page=1 → skip=0, page=2 → skip=5
 
-    total = db.query(Habit).filter(Habit.user_id == current_user.id).count()
+    query = db.query(Habit).filter(Habit.user_id == current_user.id)
+
+    # Filtrar por nombre si hay texto de búsqueda
+    if search.strip():
+        query = query.filter(
+            Habit.name.ilike(f"%{search.strip()}%")  # ilike = case insensitive
+        )
+
+    total = query.count()
 
     habits = (
-        db.query(Habit)
-        .filter(Habit.user_id == current_user.id)
+        query
         .offset(skip)
         .limit(limit)
         .all()
