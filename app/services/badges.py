@@ -2,7 +2,7 @@
 from sqlalchemy.orm import Session
 from app.models import Badge, UserBadge, Habit
 from app.services.streak import get_streak
-from datetime import datetime
+from datetime import datetime, timezone
 
 def check_and_award_badges(
     user_id: int,
@@ -36,7 +36,7 @@ def check_and_award_badges(
             user_badge = UserBadge(
                 user_id     = user_id,
                 badge_id    = badge.id,
-                unlocked_at = datetime.utcnow()
+                unlocked_at = datetime.now(timezone.utc)
             )
             db.add(user_badge)
             newly_unlocked.append(badge)

@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from app.core.config import settings
 
 # 'engine' es la conexión real a la base de datos
-engine = create_engine(settings.DATABASE_URL)
+engine = create_engine(settings.DATABASE_URL,pool_pre_ping=True,)
 # 'SessionLocal' es la fábrica de sesiones (conexiones temporales)
 SessionLocal = sessionmaker(bind=engine)
 

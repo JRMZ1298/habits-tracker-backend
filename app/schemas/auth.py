@@ -18,3 +18,7 @@ class RegisterResponse(BaseModel):
     id: int
     email: str
     name: str
+
+
+class LogoutResponse(BaseModel):
+    mensaje: str

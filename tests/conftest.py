@@ -5,7 +5,9 @@ from sqlalchemy import create_engine, StaticPool
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base, get_db
+from app.models import User
 from app.routers import auth, habits, logs, badges, stats, notifications, users
+from app.services.auth import hash_password, create_access_token
 
 
 @pytest.fixture(scope="function")
@@ -45,15 +47,15 @@ def client(db_session):
 
 
 @pytest.fixture(scope="function")
-def auth_headers(client):
-    response = client.post(
-        "/auth/register",
-        json={"email": "test@test.com", "name": "Test", "password": "secret123"}
+def auth_headers(db_session, client):
+    user = User(
+        email="test@test.com",
+        name="Test",
+        hashed_password=hash_password("secret123"),
     )
-    assert response.status_code == 200
-    login_resp = client.post(
-        "/auth/login",
-        data={"username": "test@test.com", "password": "secret123"}
-    )
-    token = login_resp.json()["access_token"]
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    token = create_access_token(data={"sub": user.email})
     return {"Authorization": f"Bearer {token}"}

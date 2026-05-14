@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "habits-tracker-backend"
+version = "1.0.0"
+description = "Backend API for a habit tracking application with gamification, AI recommendations, and email notifications"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "sqlalchemy",
+    "apscheduler",
+    "python-dotenv",
+    "pydantic-settings",
+    "alembic",
+    "pytest",
+    "httpx",
+]
+
+[project.optional-dependencies]
+redis = ["redis"]
+prod = ["psycopg2-binary", "redis"]
+dev = ["pytest", "httpx"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.alembic]
+script_location = "alembic"

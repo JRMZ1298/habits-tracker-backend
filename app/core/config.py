@@ -8,7 +8,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    DATABASE_URL: str = "sqlite:///./habits.db"
+    DATABASE_URL: str = ""
 
     SECRET_KEY: str = "cambia_esto_en_produccion"
     ALGORITHM: str = "HS256"
@@ -27,6 +27,8 @@ class Settings(BaseSettings):
 
     PEXELS_API_KEY: str = ""
     OPENROUTER_API_KEY: str = ""
+
+    REDIS_URL: str = ""
 
 
 settings = Settings()

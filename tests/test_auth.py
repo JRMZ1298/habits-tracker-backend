@@ -53,3 +53,54 @@ def test_register_missing_fields(client):
         json={"email": "bad@test.com"}
     )
     assert response.status_code == 422
+
+
+def test_logout_success(db_session, client):
+    from app.models import User
+    from app.services.auth import hash_password, create_access_token
+
+    user = User(
+        email="logout@test.com",
+        name="Logout",
+        hashed_password=hash_password("pass123"),
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    token = create_access_token(data={"sub": user.email})
+    response = client.post(
+        "/auth/logout",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "mensaje" in data
+
+
+def test_logout_token_revoked(db_session, client):
+    from app.models import User
+    from app.services.auth import hash_password, create_access_token
+
+    user = User(
+        email="revoke@test.com",
+        name="Revoke",
+        hashed_password=hash_password("pass123"),
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    token = create_access_token(data={"sub": user.email})
+    client.post("/auth/logout", headers={"Authorization": f"Bearer {token}"})
+    response = client.post(
+        "/auth/logout",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 401
+    assert "revocado" in response.json()["detail"].lower()
+
+
+def test_logout_without_token(client):
+    response = client.post("/auth/logout")
+    assert response.status_code == 401

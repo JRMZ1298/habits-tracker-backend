@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User
-from app.services.auth import hash_password, verify_password, create_access_token
+from app.services.auth import hash_password, verify_password, create_access_token, revoke_token, get_current_user, oauth2_scheme
 from app.core.config import settings
-from app.schemas.auth import RegisterRequest, RegisterResponse, LoginResponse
+from app.schemas.auth import RegisterRequest, RegisterResponse, LoginResponse, LogoutResponse
+from app.core.limiter import limiter
 import httpx
 from urllib.parse import urlencode
 
@@ -13,7 +14,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=RegisterResponse)
-def register(body: RegisterRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def register(request: Request, body: RegisterRequest, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == body.email).first():
         raise HTTPException(status_code=400, detail="Email ya registrado")
 
@@ -29,7 +31,8 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=LoginResponse)
-def login(form: OAuth2PasswordRequestForm = Depends(),
+@limiter.limit("10/minute")
+def login(request: Request, form: OAuth2PasswordRequestForm = Depends(),
           db: Session = Depends(get_db)):
     """
     Login estándar OAuth2.
@@ -58,6 +61,12 @@ def login(form: OAuth2PasswordRequestForm = Depends(),
         user_name=user.name,
         user_email=user.email
     )
+
+@router.post("/logout", response_model=LogoutResponse)
+def logout(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    revoke_token(token, db)
+    return LogoutResponse(mensaje="Sesión cerrada")
+
 
 GOOGLE_CLIENT_ID     = settings.GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET = settings.GOOGLE_CLIENT_SECRET

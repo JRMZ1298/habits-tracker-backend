@@ -3,9 +3,9 @@ import random
 import httpx
 import json
 from openai import OpenAI
-import time
 from app.core.limiter import limiter
 from app.core.config import settings
+from app.core.cache import cache
 
 router = APIRouter(prefix="/recommendation", tags=["recommendation"])
 
@@ -24,27 +24,6 @@ else:
 
 
 # =========================
-# 🧠 CACHE
-# =========================
-CACHE = {}
-CACHE_TTL = 300  # 5 min
-
-def get_cache(key):
-    data = CACHE.get(key)
-    if not data:
-        return None
-
-    value, expires = data
-    if time.time() > expires:
-        del CACHE[key]
-        return None
-
-    return value
-
-def set_cache(key, value):
-    CACHE[key] = (value, time.time() + CACHE_TTL)
-
-# =========================
 # 🎯 BASE
 # =========================
 BASE_QUERIES = [
@@ -58,10 +37,10 @@ BASE_QUERIES = [
 # =========================
 # 🤖 OPENROUTER
 # =========================
-def generate_title(base_query: str):
+async def generate_title(base_query: str):
     cache_key = f"title:{base_query}"
 
-    cached = get_cache(cache_key)
+    cached = await cache.get(cache_key)
     if cached:
         return cached
 
@@ -91,14 +70,14 @@ Responde SOLO en JSON:
         data = json.loads(text)
         title = data["title"]
 
-        set_cache(cache_key, title)
+        await cache.set(cache_key, title, 300)
         return title
 
     except Exception as e:
         print("AI ERROR:", e)
 
-        fallback = base_query  # 🔥 importante: usar query base
-        set_cache(cache_key, fallback)
+        fallback = base_query
+        await cache.set(cache_key, fallback, 300)
         return fallback
 
 # =========================
@@ -107,7 +86,7 @@ Responde SOLO en JSON:
 async def get_image(query: str):
     cache_key = f"img:{query}"
 
-    cached = get_cache(cache_key)
+    cached = await cache.get(cache_key)
     if cached:
         return cached
 
@@ -127,14 +106,14 @@ async def get_image(query: str):
 
             if photos:
                 image = photos[0]["src"]["large"]
-                set_cache(cache_key, image)
+                await cache.set(cache_key, image, 300)
                 return image
 
     except Exception as e:
         print("PEXELS ERROR:", e)
 
     fallback = "https://images.pexels.com/photos/414029/pexels-photo-414029.jpeg"
-    set_cache(cache_key, fallback)
+    await cache.set(cache_key, fallback, 300)
     return fallback
 
 # =========================
@@ -145,7 +124,7 @@ async def get_image(query: str):
 async def recommendation(request: Request):
     cache_key = "recommendation"
 
-    cached = get_cache(cache_key)
+    cached = await cache.get(cache_key)
     if cached:
         return cached
 
@@ -153,7 +132,7 @@ async def recommendation(request: Request):
     base_query = random.choice(BASE_QUERIES)
 
     # 🤖 IA genera título (que será query)
-    title = generate_title(base_query)
+    title = await generate_title(base_query)
 
     # 📸 imagen usa el título
     image = await get_image(title)
@@ -163,6 +142,6 @@ async def recommendation(request: Request):
         "image": image,
     }
 
-    set_cache(cache_key, response)
+    await cache.set(cache_key, response, 60)
 
     return response

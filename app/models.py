@@ -1,6 +1,6 @@
 from typing import Optional
-from datetime import datetime, date
-from sqlalchemy import String, Boolean, Date, ForeignKey, DateTime, JSON, Integer
+from datetime import datetime, date, timezone
+from sqlalchemy import String, Boolean, Date, ForeignKey, DateTime, JSON, Integer, Index, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -31,10 +31,14 @@ class Habit(Base):
     goal: Mapped[str] = mapped_column(String, nullable=False)
     reminders: Mapped[Optional[list[str]]] = mapped_column(JSON, default=list)
     icon: Mapped[str] = mapped_column(String, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user: Mapped["User"] = relationship(back_populates="habits")
     logs: Mapped[list["HabitLog"]] = relationship(back_populates="habit", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_habits_user_frequency", "user_id", "frequency"),
+    )
 
     def __repr__(self) -> str:
         return f"Habit(id={self.id}, name={self.name})"
@@ -47,6 +51,10 @@ class HabitLog(Base):
     habit_id: Mapped[int] = mapped_column(ForeignKey("habits.id"), index=True)
     completed: Mapped[bool] = mapped_column(Boolean, default=True)
     date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+
+    __table_args__ = (
+        Index("ix_habit_logs_habit_date", "habit_id", "date"),
+    )
 
     habit: Mapped["Habit"] = relationship(back_populates="logs")
 
@@ -71,16 +79,32 @@ class Badge(Base):
         return f"Badge(id={self.id}, key={self.key})"
 
 
+class TokenBlacklist(Base):
+    __tablename__ = "token_blacklist"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    jti: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self) -> str:
+        return f"TokenBlacklist(jti={self.jti})"
+
+
 class UserBadge(Base):
     __tablename__ = "user_badges"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     badge_id: Mapped[int] = mapped_column(ForeignKey("badges.id"), index=True)
-    unlocked_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    unlocked_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user: Mapped["User"] = relationship()
     badge: Mapped["Badge"] = relationship(back_populates="user_badges")
+
+    __table_args__ = (
+        Index("ix_user_badges_user_badge", "user_id", "badge_id"),
+    )
 
     def __repr__(self) -> str:
         return f"UserBadge(user_id={self.user_id}, badge_id={self.badge_id})"
