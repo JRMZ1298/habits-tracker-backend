@@ -35,7 +35,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://TU-APP.vercel.app",
+        "https://habits-tracker-frontend-chi.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
